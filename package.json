@@ -1,0 +1,47 @@
+{
+  "name": "shijing-agent",
+  "version": "0.1.0",
+  "description": "Did your redesign make the task easier? An agent runs the same task on both versions of a web page and reports clicks, steps and output diffs.",
+  "type": "module",
+  "bin": {
+    "shijing": "bin/shijing.js"
+  },
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "examples",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "scripts": {
+    "demo": "node bin/shijing.js run examples/export-csv/task.yaml",
+    "test": "node --test tests/rules.test.js tests/checks.test.js tests/claude.test.js tests/e2e.test.js",
+    "test:unit": "node --test tests/rules.test.js tests/checks.test.js tests/claude.test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "ai-agent",
+    "ux",
+    "usability",
+    "regression-testing",
+    "playwright",
+    "claude",
+    "browser-automation"
+  ],
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0",
+    "playwright": "^1.62.0",
+    "yaml": "^2.6.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gengsong/shijing-agent.git"
+  }
+}

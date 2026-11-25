@@ -1,0 +1,28 @@
+name: Agent got it wrong
+description: The agent took a wrong path, gave up, or a check gave the wrong verdict.
+labels: [eval-case]
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: Task YAML
+      description: Remove secrets and private URLs. A public page or a minimal HTML reproduction is ideal.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: result.json (or the report)
+      render: json
+  - type: textarea
+    id: expected
+    attributes:
+      label: What would a person have clicked?
+    validations:
+      required: true
+  - type: input
+    id: planner
+    attributes:
+      label: Planner and version
+      placeholder: rules / claude:claude-opus-5-5, shijing-agent 0.1.0

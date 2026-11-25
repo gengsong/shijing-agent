@@ -1,0 +1,4 @@
+node_modules/
+.shijing/
+.DS_Store
+*.log

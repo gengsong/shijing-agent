@@ -1,0 +1,15 @@
+# Control case: the expected file is missing one row on purpose.
+# Both versions must FAIL this task. If they pass, the checks are broken.
+name: Export the release checklist (control, must fail)
+goal: Export the task list as a CSV file
+
+targets:
+  baseline: ./site/v1/index.html
+  candidate: ./site/v2/index.html
+
+success:
+  download:
+    name: "*.csv"
+    equals: ./expected/checklist-missing-row.csv
+
+maxSteps: 10

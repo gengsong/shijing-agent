@@ -1,0 +1,14 @@
+name: Bug
+description: Something crashed or did not install.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: OS, Node version, browser

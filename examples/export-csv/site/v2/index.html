@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Release checklist · v2</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+  <h1>Release checklist <span class="badge">v2 · redesign</span></h1>
+  <p class="sub">The frequent action, Export CSV, sits on the toolbar.</p>
+
+  <div class="toolbar">
+    <button id="add">Add task</button>
+    <button id="filter">Filter</button>
+    <button id="export" class="primary">Export CSV</button>
+    <button id="more" aria-haspopup="menu" aria-expanded="false">More ▾</button>
+    <div class="menu" id="more-menu" role="menu" hidden style="left: 290px">
+      <button role="menuitem" id="json">Export JSON</button>
+      <button role="menuitem" id="print">Print</button>
+      <button role="menuitem" id="settings">Settings</button>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Task</th><th>Status</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <p id="toast" role="status"></p>
+</main>
+
+<script type="module">
+  import { tasks, toCsv, toJson, download, renderTable, toast } from '../shared.js';
+  const $ = (id) => document.getElementById(id);
+  const rows = [...tasks];
+  renderTable($('rows'), rows);
+
+  const toggle = (open = $('more-menu').hidden) => { $('more-menu').hidden = !open; $('more').setAttribute('aria-expanded', String(open)); };
+
+  $('add').onclick = () => { rows.push({ task: 'New task', status: 'To do' }); renderTable($('rows'), rows); };
+  $('filter').onclick = () => toast('Filtering is not part of this demo.');
+  $('export').onclick = () => { download('checklist.csv', toCsv(rows), 'text/csv'); toast(`Exported ${rows.length} tasks.`); };
+  $('more').onclick = () => toggle();
+  $('json').onclick = () => { toggle(false); download('checklist.json', toJson(rows), 'application/json'); };
+  $('print').onclick = () => { toggle(false); toast('Printing is not part of this demo.'); };
+  $('settings').onclick = () => { toggle(false); toast('Settings are not part of this demo.'); };
+</script>
+</body>
+</html>

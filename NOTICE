@@ -1,0 +1,11 @@
+shijing-agent
+Copyright 2026 The shijing-agent authors
+
+This product depends on the following third-party software, installed from npm
+and not redistributed in this repository:
+
+- Playwright (Apache-2.0) — https://github.com/microsoft/playwright
+- yaml (ISC) — https://github.com/eemeli/yaml
+- @anthropic-ai/sdk (MIT) — https://github.com/anthropics/anthropic-sdk-typescript
+
+The example site under examples/export-csv is original work of this project.

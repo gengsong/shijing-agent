@@ -1,0 +1,15 @@
+# Same task, two versions of the page.
+# Run: npx shijing run examples/export-csv/task.yaml
+name: Export the release checklist
+goal: Export the task list as a CSV file
+
+targets:
+  baseline: ./site/v1/index.html    # original: export hidden in nested menus
+  candidate: ./site/v2/index.html   # redesign: Export CSV on the toolbar
+
+success:
+  download:
+    name: "*.csv"
+    equals: ./expected/checklist.csv   # byte-for-byte; both versions must export the same data
+
+maxSteps: 10

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Release checklist · v1</title>
+  <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+  <h1>Release checklist <span class="badge">v1 · original</span></h1>
+  <p class="sub">Export lives under More actions → Data management → Export list.</p>
+
+  <div class="toolbar">
+    <button id="add">Add task</button>
+    <button id="filter">Filter</button>
+    <button id="more" aria-haspopup="menu" aria-expanded="false">More actions ▾</button>
+    <div class="menu" id="more-menu" role="menu" hidden style="left: 190px">
+      <button role="menuitem" id="print">Print</button>
+      <button role="menuitem" id="data" aria-haspopup="menu" aria-expanded="false">Data management ▸</button>
+      <button role="menuitem" id="settings">Settings</button>
+      <div class="menu submenu" id="data-menu" role="menu" hidden>
+        <button role="menuitem" id="import">Import list</button>
+        <button role="menuitem" id="export">Export list</button>
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Task</th><th>Status</th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+  <p id="toast" role="status"></p>
+</main>
+
+<div role="dialog" aria-modal="true" aria-labelledby="dlg-title" id="dialog" hidden>
+  <div class="card">
+    <h2 id="dlg-title">Export list</h2>
+    <div class="row">
+      <button id="fmt-csv" aria-pressed="false">Choose CSV</button>
+      <button id="fmt-json" aria-pressed="false">Choose JSON</button>
+    </div>
+    <div class="actions">
+      <button id="cancel">Cancel</button>
+      <button id="go" class="primary" disabled>Download</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { tasks, toCsv, toJson, download, renderTable, toast } from '../shared.js';
+  const $ = (id) => document.getElementById(id);
+  const rows = [...tasks];
+  renderTable($('rows'), rows);
+
+  const toggle = (btn, menu, open = menu.hidden) => { menu.hidden = !open; btn.setAttribute('aria-expanded', String(open)); };
+  const closeMenus = () => { toggle($('more'), $('more-menu'), false); toggle($('data'), $('data-menu'), false); };
+
+  $('add').onclick = () => { rows.push({ task: 'New task', status: 'To do' }); renderTable($('rows'), rows); };
+  $('filter').onclick = () => toast('Filtering is not part of this demo.');
+  $('more').onclick = () => toggle($('more'), $('more-menu'));
+  $('data').onclick = () => toggle($('data'), $('data-menu'));
+  $('print').onclick = () => { closeMenus(); toast('Printing is not part of this demo.'); };
+  $('settings').onclick = () => { closeMenus(); toast('Settings are not part of this demo.'); };
+  $('import').onclick = () => { closeMenus(); toast('Import is not part of this demo.'); };
+  $('export').onclick = () => { closeMenus(); $('dialog').hidden = false; };
+
+  let format = null;
+  const choose = (f) => {
+    format = f;
+    $('fmt-csv').setAttribute('aria-pressed', String(f === 'csv'));
+    $('fmt-json').setAttribute('aria-pressed', String(f === 'json'));
+    $('go').disabled = false;
+    $('go').textContent = `Download ${f.toUpperCase()}`;
+  };
+  $('fmt-csv').onclick = () => choose('csv');
+  $('fmt-json').onclick = () => choose('json');
+  $('cancel').onclick = () => { $('dialog').hidden = true; };
+  $('go').onclick = () => {
+    if (format === 'csv') download('checklist.csv', toCsv(rows), 'text/csv');
+    else download('checklist.json', toJson(rows), 'application/json');
+    $('dialog').hidden = true;
+    toast(`Exported ${rows.length} tasks.`);
+  };
+</script>
+</body>
+</html>
