@@ -1,6 +1,6 @@
 {
   "name": "shijing-agent",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Your AI agent changed the UI. Did it get easier? Runs the same user task on the before and after version and reports clicks, path and output diffs. CLI and MCP server for Claude Code, Cursor and Codex.",
   "type": "module",
   "bin": {
