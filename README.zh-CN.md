@@ -55,13 +55,19 @@ npx shijing-agent demo --video         # 同时录下 Agent 在每个版本上�
 - `run_task_file`：运行一个任务 YAML 文件。
 - `run_demo`：离线运行内置示例。
 
-在 Claude Code 里接入：
+一条命令接入本机找到的所有 Agent（Claude Code、Claude Desktop、Cursor、Codex）：
 
 ```bash
-claude mcp add shijing -- npx -y shijing-agent mcp
+npx shijing-agent setup
 ```
 
-Claude Desktop、Cursor 等客户端，在 `mcpServers` 配置里加上 `"command": "npx", "args": ["-y", "shijing-agent", "mcp"]` 即可。
+它会先列出要改哪些配置，等你确认后才动手，每个配置文件改之前都会备份。对 Claude Code 还会装一个 `shijing-ux-check` 技能：Agent 改完界面后，会先用 shijing 测一遍，再说"改好了"。装完重启 Agent，然后对它说："我改了导出流程，用 shijing 看看是不是更好用了。"
+
+- `--dry-run`：只看计划，不做修改。
+- `--client cursor`：只配置一个客户端，可选 claude-code、claude-desktop、cursor、codex。
+- `--remove`：撤销全部配置。
+
+其他客户端可以手动在 `mcpServers` 配置里加上 `"command": "npx", "args": ["-y", "shijing-agent", "mcp"]`。
 
 ## 安全边界
 

@@ -2,6 +2,7 @@
 
 ## 0.1.0 (2026-11-25)
 
+- `shijing setup`: connects Claude Code, Claude Desktop, Cursor and Codex (plan, approval, backups, `--remove`); installs the `shijing-ux-check` skill for Claude Code
 - `shijing mcp`: MCP server on stdio with `compare_pages`, `run_task_file` and `run_demo`
 - Claude planner tries Sonnet 5.5 first and re-runs a target with Opus 5.5 if Sonnet doesn't finish; the report shows the chain and summed cost
 - `shijing demo` runs the bundled example; `--video` and `--slow-mo` record each version with clicks highlighted

@@ -14,6 +14,8 @@ Usage
   shijing demo [options]           Run the bundled example (old vs new checklist page)
   shijing run <task.yaml> [options]
   shijing mcp                       Start the MCP server on stdio (for Claude Code, Claude Desktop, Cursor...)
+  shijing setup [--yes] [--dry-run] [--remove] [--client <name>]
+                                    Connect shijing to Claude Code, Claude Desktop, Cursor and Codex
 
 Options
   --target <name>     Run only this target (repeatable). Default: all, in file order.
@@ -47,6 +49,10 @@ async function main() {
       chrome: { type: 'boolean', default: false },
       json: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
+      yes: { type: 'boolean', short: 'y', default: false },
+      'dry-run': { type: 'boolean', default: false },
+      remove: { type: 'boolean', default: false },
+      client: { type: 'string', multiple: true },
     },
   });
 
@@ -56,6 +62,7 @@ async function main() {
     process.stdout.write(HELP);
     return 0;
   }
+  if (command === 'setup') return setup(values);
   if (command === 'mcp') {
     const { startStdioServer } = await import('../src/mcp.js');
     await startStdioServer();
@@ -116,6 +123,48 @@ async function main() {
     log(`\nReport: ${path.relative(process.cwd(), path.join(outDir, 'report.md'))}`);
   }
   return run.results.every((r) => r.status === 'passed') ? 0 : 1;
+}
+
+async function setup(values) {
+  const { planSetup, formatPlan, applyPlan } = await import('../src/setup.js');
+  const plan = await planSetup({ only: values.client, remove: values.remove });
+  const changes = plan.steps.filter((s) => ['add', 'update', 'remove'].includes(s.status));
+
+  process.stdout.write(`shijing setup${values.remove ? ' --remove' : ''}\n\n${formatPlan(plan) || '  No supported agent found.'}\n\n`);
+  if (!plan.steps.length) {
+    process.stdout.write('Supported: Claude Code, Claude Desktop, Cursor, Codex. Use --client <name> to set one up anyway.\n');
+    return 1;
+  }
+  if (!changes.length) {
+    process.stdout.write('Nothing to change.\n');
+    return 0;
+  }
+  if (values['dry-run']) return 0;
+
+  if (!values.yes) {
+    if (!process.stdin.isTTY) {
+      process.stdout.write('Re-run with --yes to apply these changes.\n');
+      return 1;
+    }
+    const { createInterface } = await import('node:readline/promises');
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const answer = (await rl.question(`Apply ${changes.length} change(s)? Existing config files are backed up first. [y/N] `)).trim().toLowerCase();
+    rl.close();
+    if (answer !== 'y' && answer !== 'yes') {
+      process.stdout.write('Nothing changed.\n');
+      return 1;
+    }
+  }
+
+  const results = await applyPlan(plan);
+  for (const r of results) {
+    process.stdout.write(`  ${r.ok ? '✓' : '✗'} ${r.client} ${r.kind}${r.ok ? '' : `: ${r.error}`}\n`);
+  }
+  const failed = results.filter((r) => !r.ok).length;
+  if (!values.remove && !failed) {
+    process.stdout.write('\nRestart your agent, then ask it: "I changed the export flow. Use shijing to check if it got easier."\n');
+  }
+  return failed ? 1 : 0;
 }
 
 main().then(

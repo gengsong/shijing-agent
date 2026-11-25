@@ -99,13 +99,21 @@ The report's Planner row shows what ran, e.g. `sonnet-5-5 (failed) → opus-5-5 
 | `run_task_file` | Runs a task YAML |
 | `run_demo` | Runs the built-in example, offline |
 
-Claude Code:
+One command connects it to every agent it finds (Claude Code, Claude Desktop, Cursor, Codex):
 
 ```bash
-claude mcp add shijing -- npx -y shijing-agent mcp
+npx shijing-agent setup
 ```
 
-Claude Desktop, Cursor and other clients (`mcpServers` in their config):
+It shows the plan, asks before changing anything, and backs up each config file first. For Claude Code it also installs the `shijing-ux-check` skill, which tells the agent to measure a UI change before calling it an improvement. Then restart your agent and ask: *"I changed the export flow. Use shijing to check if it got easier."*
+
+```bash
+npx shijing-agent setup --dry-run          # show the plan only
+npx shijing-agent setup --client cursor    # one client: claude-code, claude-desktop, cursor, codex
+npx shijing-agent setup --remove           # undo
+```
+
+Manual setup for other clients (`mcpServers` in their config):
 
 ```json
 {
@@ -150,6 +158,7 @@ Code map: `src/observe.js` (what a user can act on), `src/planners/` (rules, cla
 - [x] v0.1: CLI, rules and Claude planners, download and text checks, Markdown report
 - [x] Demo GIF and npm release
 - [x] MCP server; Claude planner escalates Sonnet → Opus
+- [x] `setup` for Claude Code, Claude Desktop, Cursor and Codex, with a UX-check skill
 - [ ] GitHub Action that comments the comparison on pull requests
 - [ ] Eval set: 30 tasks across public demo sites, tracking success rate and cost per planner
 - [ ] Form-filling tasks with test data, multi-page flows, mobile viewport presets
