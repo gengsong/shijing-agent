@@ -25,6 +25,10 @@ npm run test:unit   # no browser needed
 - Any change to the planners must keep `examples/export-csv` at 5 → 1 clicks, and the control task must still fail.
 - Changes to `src/policy.js` that make the agent *less* careful need a clear reason in the PR.
 
+## Demo GIF
+
+`node scripts/make-demo-gif.mjs` rebuilds `docs/demo.gif` (needs ffmpeg and `npx playwright install chromium ffmpeg`).
+
 ## Releases
 
 Maintainers tag `vX.Y.Z` after CI passes on `main`. Notes go in CHANGELOG.md.

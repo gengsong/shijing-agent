@@ -5,8 +5,10 @@
 
 [English](README.md)
 
+![同一任务：原版 5 次点击，改版 1 次，CSV 一致](docs/demo.gif)
+
 ```text
-$ npx shijing run examples/export-csv/task.yaml
+$ npx shijing-agent demo
 ...
 candidate completes the task in 1 click instead of 5 (-4) with identical output.
 ```
@@ -26,12 +28,14 @@ shijing-agent 像第一次使用的用户那样操作：它不按你写好的选
 需要 Node.js 20+，以及 Chromium（运行 `npx playwright install chromium` 安装）或本机 Chrome（加 `--chrome` 参数）。
 
 ```bash
-npm install
-npx playwright install chromium
-npm run demo
+npx shijing-agent demo                 # 内置示例：新旧两版清单页
+npx shijing-agent run my-task.yaml     # 运行你自己的任务
+npx shijing-agent demo --video         # 同时录下 Agent 在每个版本上的操作
 ```
 
-报告保存在 `.shijing/runs/<时间>/report.md`，同目录下还有 `result.json`、下载的文件和每个版本的最终截图。
+国内网络如果安装慢，可以加上 `--registry=https://registry.npmmirror.com`。
+
+报告保存在 `.shijing/runs/<时间>/report.md`，同目录下还有 `result.json`、下载的文件和每个版本的最终截图。加 `--video` 时，每个版本还会生成一段 `.webm` 录像，Agent 每次点击的位置都会高亮。
 
 ## 编写任务
 

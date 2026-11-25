@@ -2,6 +2,7 @@
 import { parseArgs } from 'node:util';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadTask, TaskError } from '../src/task.js';
 import { runTask } from '../src/run.js';
 import { renderMarkdown, compare } from '../src/report.js';
@@ -10,6 +11,7 @@ import { createRulesPlanner } from '../src/planners/rules.js';
 const HELP = `shijing — did your redesign make the task easier?
 
 Usage
+  shijing demo [options]           Run the bundled example (old vs new checklist page)
   shijing run <task.yaml> [options]
 
 Options
@@ -19,6 +21,8 @@ Options
   --out <dir>         Where to write report.md, result.json, downloads and screenshots.
                       Default: .shijing/runs/<timestamp>
   --headed            Show the browser window.
+  --video             Record a video of each target (with the agent's clicks highlighted).
+  --slow-mo <ms>      Slow every browser action down, e.g. for recordings.
   --chrome            Use your installed Google Chrome instead of bundled Chromium.
   --json              Print result.json to stdout instead of the Markdown report.
   -h, --help          Show this help.
@@ -36,19 +40,29 @@ async function main() {
       model: { type: 'string' },
       out: { type: 'string' },
       headed: { type: 'boolean', default: false },
+      video: { type: 'boolean', default: false },
+      'slow-mo': { type: 'string', default: '0' },
       chrome: { type: 'boolean', default: false },
       json: { type: 'boolean', default: false },
       help: { type: 'boolean', short: 'h', default: false },
     },
   });
 
-  const [command, taskFile] = positionals;
+  const [command] = positionals;
+  let [, taskFile] = positionals;
   if (values.help || !command) {
     process.stdout.write(HELP);
     return 0;
   }
-  if (command !== 'run' || !taskFile) {
-    process.stderr.write(`Unknown command. Try: shijing run examples/export-csv/task.yaml\n`);
+  if (command === 'demo') {
+    taskFile = fileURLToPath(new URL('../examples/export-csv/task.yaml', import.meta.url));
+  } else if (command !== 'run' || !taskFile) {
+    process.stderr.write(`Unknown command. Try: shijing demo\n`);
+    return 2;
+  }
+  const slowMo = Number(values['slow-mo']);
+  if (!Number.isInteger(slowMo) || slowMo < 0 || slowMo > 5000) {
+    process.stderr.write('--slow-mo must be a whole number of milliseconds (0-5000).\n');
     return 2;
   }
 
@@ -77,6 +91,8 @@ async function main() {
     outDir,
     headed: values.headed,
     channel: values.chrome ? 'chrome' : undefined,
+    video: values.video,
+    slowMo,
     onStep: (target, s) => log(`  [${target}] ${s.step}. ${s.action} "${s.label}"`),
   });
 

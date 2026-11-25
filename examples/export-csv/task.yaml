@@ -1,5 +1,5 @@
 # Same task, two versions of the page.
-# Run: npx shijing run examples/export-csv/task.yaml
+# Run: npx shijing-agent demo   (or: npx shijing-agent run examples/export-csv/task.yaml)
 name: Export the release checklist
 goal: Export the task list as a CSV file
 
@@ -13,3 +13,4 @@ success:
     equals: ./expected/checklist.csv   # byte-for-byte; both versions must export the same data
 
 maxSteps: 10
+viewport: { width: 760, height: 400 }   # compact, so the demo recording is readable

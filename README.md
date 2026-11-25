@@ -5,8 +5,10 @@ Describe a task in plain English. An agent does it on both versions of your page
 
 [中文说明](README.zh-CN.md)
 
+![Same task on the original page and the redesign: 5 clicks vs 1, identical CSV](docs/demo.gif)
+
 ```text
-$ npx shijing run examples/export-csv/task.yaml
+$ npx shijing-agent demo
 
 ▶ Export the release checklist
   [baseline] 1. click "More actions ▾"
@@ -18,8 +20,6 @@ $ npx shijing run examples/export-csv/task.yaml
 
 candidate completes the task in 1 click instead of 5 (-4) with identical output.
 ```
-
-<!-- TODO: replace with a GIF of the demo (docs/demo.gif) -->
 
 ## Why
 
@@ -36,13 +36,20 @@ shijing-agent behaves like a first-time user. It doesn't follow selectors you wr
 Requirements: Node.js 20+ and Chromium (`npx playwright install chromium`) or Google Chrome (`--chrome`).
 
 ```bash
-git clone https://github.com/gengsong/shijing-agent && cd shijing-agent
-npm install
-npx playwright install chromium
-npm run demo
+npx shijing-agent demo                 # built-in example: old vs new checklist page
+npx shijing-agent run my-task.yaml     # your own task
+npx shijing-agent demo --video         # also record what the agent did, per version
 ```
 
-The report is written to `.shijing/runs/<time>/report.md`, along with `result.json`, the downloaded files and a final screenshot for each version.
+The report is written to `.shijing/runs/<time>/report.md`, along with `result.json`, the downloaded files and a final screenshot for each version. With `--video`, you also get one `.webm` per version with each click highlighted.
+
+From source:
+
+```bash
+git clone https://github.com/gengsong/shijing-agent && cd shijing-agent
+npm install && npx playwright install chromium
+npm run demo
+```
 
 ## Write your own task
 
@@ -76,8 +83,8 @@ Full reference: [docs/task-format.md](docs/task-format.md).
 
 ```bash
 export ANTHROPIC_API_KEY=...        # bring your own key; nothing is sent anywhere else
-npx shijing run task.yaml --planner claude                     # default model: claude-opus-5-5
-npx shijing run task.yaml --planner claude --model claude-sonnet-5-5
+npx shijing-agent run task.yaml --planner claude                     # default model: claude-opus-5-5
+npx shijing-agent run task.yaml --planner claude --model claude-sonnet-5-5
 ```
 
 ## Safety
@@ -107,7 +114,7 @@ Code map: `src/observe.js` (what a user can act on), `src/planners/` (rules, cla
 ## Roadmap
 
 - [x] v0.1: CLI, rules and Claude planners, download and text checks, Markdown report
-- [ ] Demo GIF and npm release
+- [x] Demo GIF and npm release
 - [ ] GitHub Action that comments the comparison on pull requests
 - [ ] Eval set: 30 tasks across public demo sites, tracking success rate and cost per planner
 - [ ] Form-filling tasks with test data, multi-page flows, mobile viewport presets

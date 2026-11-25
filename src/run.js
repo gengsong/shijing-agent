@@ -6,17 +6,43 @@ import { checkDownload, checkText, sha256 } from './checks.js';
 import { describeSuccess } from './task.js';
 import { serveDirectory } from './serve.js';
 
-export async function launchBrowser({ headed = false, channel } = {}) {
+export async function launchBrowser({ headed = false, channel, slowMo = 0 } = {}) {
   const { chromium } = await import('playwright');
-  const opts = { headless: !headed };
+  const opts = { headless: !headed, slowMo };
   if (channel) return chromium.launch({ ...opts, channel });
   try {
     return await chromium.launch(opts);
   } catch (e) {
+    if (!/Executable doesn't exist|playwright install/i.test(e.message)) throw e;
     // No bundled Chromium yet: fall back to the user's installed Chrome.
-    if (/Executable doesn't exist|playwright install/i.test(e.message)) return chromium.launch({ ...opts, channel: 'chrome' });
-    throw e;
+    try {
+      return await chromium.launch({ ...opts, channel: 'chrome' });
+    } catch {
+      throw new Error('No browser found. Run `npx playwright install chromium`, or install Google Chrome.');
+    }
   }
+}
+
+/** Outline the control the agent is about to use, with a step badge (visible in --video recordings). */
+async function highlight(page, el, text) {
+  await el.evaluate((node, label) => {
+    document.getElementById('__shijing_hl')?.remove();
+    const r = node.getBoundingClientRect();
+    const box = document.createElement('div');
+    box.id = '__shijing_hl';
+    Object.assign(box.style, {
+      position: 'fixed', left: `${r.left - 4}px`, top: `${r.top - 4}px`, width: `${r.width + 8}px`, height: `${r.height + 8}px`,
+      border: '3px solid #ff5a1f', borderRadius: '8px', pointerEvents: 'none', zIndex: 2147483647, boxSizing: 'border-box',
+    });
+    const tag = document.createElement('div');
+    tag.textContent = label;
+    Object.assign(tag.style, {
+      position: 'absolute', left: '-3px', top: `${r.height + 10}px`, whiteSpace: 'nowrap', background: '#ff5a1f', color: '#fff',
+      font: '600 13px/1.6 system-ui, sans-serif', padding: '1px 8px', borderRadius: '6px',
+    });
+    box.append(tag);
+    document.body.append(box);
+  }, text).catch(() => {});
 }
 
 /**
@@ -24,7 +50,7 @@ export async function launchBrowser({ headed = false, channel } = {}) {
  *
  * @returns {Promise<object>} result with status, clicks, steps and output.
  */
-export async function runTarget({ task, targetName, browser, planner, outDir, onStep = () => {} }) {
+export async function runTarget({ task, targetName, browser, planner, outDir, onStep = () => {}, video = false }) {
   const target = task.targets[targetName];
   let server = null;
   let url = target.url;
@@ -34,7 +60,10 @@ export async function runTarget({ task, targetName, browser, planner, outDir, on
   }
 
   const origin = new URL(url).origin;
-  const context = await browser.newContext({ viewport: task.viewport, acceptDownloads: true, serviceWorkers: 'block' });
+  const context = await browser.newContext({
+    viewport: task.viewport, acceptDownloads: true, serviceWorkers: 'block',
+    ...(video ? { recordVideo: { dir: outDir, size: task.viewport } } : {}),
+  });
   let page;
   await context.route('**/*', (route) => {
     const req = route.request();
@@ -78,6 +107,10 @@ export async function runTarget({ task, targetName, browser, planner, outDir, on
 
       const el = page.locator(`[data-shijing-id="${item.id}"]`);
       pendingDownload = null;
+      if (video) {
+        await highlight(page, el, `Agent · step ${step}: ${item.label}`);
+        await page.waitForTimeout(700);
+      }
       if (decision.action === 'type') {
         await el.fill(String(decision.text ?? '').slice(0, 200));
         await el.press('Enter');
@@ -115,12 +148,23 @@ export async function runTarget({ task, targetName, browser, planner, outDir, on
     if (result.status !== 'passed' && !result.reason) result.reason = `Not done after ${task.maxSteps} steps.`;
     if (result.status === 'passed') result.reason = result.checks.map((c) => c.detail).join(' ');
 
+    if (video) {
+      await page.evaluate(() => document.getElementById('__shijing_hl')?.remove()).catch(() => {});
+      await page.waitForTimeout(1500); // let the result settle on screen
+    }
     await page.screenshot({ path: path.join(outDir, `${targetName}-final.png`) }).catch(() => {});
   } catch (e) {
     result.status = 'error';
     result.reason = e.message.split('\n')[0];
   } finally {
+    const recording = video ? page?.video() : null;
     await context.close().catch(() => {});
+    if (recording) {
+      const file = path.join(outDir, `${targetName}.webm`);
+      await recording.saveAs(file).catch(() => {});
+      await recording.delete().catch(() => {});
+      result.video = path.relative(process.cwd(), file);
+    }
     await server?.close();
   }
   result.seconds = Math.round((Date.now() - started) / 100) / 10;
@@ -128,15 +172,15 @@ export async function runTarget({ task, targetName, browser, planner, outDir, on
 }
 
 /** Run a task on every target (or the named ones) and write result.json. */
-export async function runTask({ task, targets, plannerFactory, outDir, headed, channel, onStep }) {
+export async function runTask({ task, targets, plannerFactory, outDir, headed, channel, onStep, video = false, slowMo = 0 }) {
   await mkdir(outDir, { recursive: true });
-  const browser = await launchBrowser({ headed, channel });
+  const browser = await launchBrowser({ headed, channel, slowMo });
   const results = [];
   try {
     for (const name of targets ?? Object.keys(task.targets)) {
       if (!task.targets[name]) throw new Error(`Unknown target "${name}". Known: ${Object.keys(task.targets).join(', ')}`);
       const planner = plannerFactory();
-      const r = await runTarget({ task, targetName: name, browser, planner, outDir, onStep: (s) => onStep?.(name, s) });
+      const r = await runTarget({ task, targetName: name, browser, planner, outDir, video, onStep: (s) => onStep?.(name, s) });
       r.planner = planner.name;
       if (planner.usage) r.usage = { ...planner.usage };
       results.push(r);

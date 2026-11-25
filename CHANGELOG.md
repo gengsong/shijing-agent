@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-11-25)
+
+- `shijing demo` runs the bundled example; `--video` and `--slow-mo` record each version with clicks highlighted
 
 - `shijing run` CLI with baseline / candidate comparison and Markdown + JSON reports
 - Rules planner (offline) and Claude planner (bring your own key)
