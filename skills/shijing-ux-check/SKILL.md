@@ -1,11 +1,11 @@
 ---
 name: shijing-ux-check
-description: After changing a user-facing web flow (moving a button, reworking a menu, a form or an export path), measure whether the task got easier. Runs the same task on the old and new version with the shijing MCP tools and reports clicks, path and whether the output is identical. Use when the user asks if a UI change is an improvement, or before claiming one.
+description: Use after you change a user-facing web flow (moving a button, reworking a menu, a form or an export path) to measure whether the task actually got easier for the user. Runs the same task on the old and new version with the shijing MCP tools and reports clicks, path and whether the output is identical. Use when the user asks if a UI change is an improvement, or before claiming one.
 ---
 
 # UX check with shijing
 
-Use this when a change touches how a user gets something done on a web page. Use it before you say "this is easier now", not after.
+Use this when you have changed how a user gets something done on a web page. Passing tests show the page still works. They don't show the task got easier. Measure before you say "this is easier now", not after.
 
 ## 1. Pin down the task
 

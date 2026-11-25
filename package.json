@@ -1,7 +1,7 @@
 {
   "name": "shijing-agent",
   "version": "0.1.0",
-  "description": "Did your redesign make the task easier? An agent runs the same task on both versions of a web page and reports clicks, steps and output diffs.",
+  "description": "Your AI agent changed the UI. Did it get easier? Runs the same user task on the before and after version and reports clicks, path and output diffs. CLI and MCP server for Claude Code, Cursor and Codex.",
   "type": "module",
   "bin": {
     "shijing": "bin/shijing.js"
@@ -33,7 +33,13 @@
     "regression-testing",
     "playwright",
     "claude",
-    "browser-automation"
+    "browser-automation",
+    "ai-coding",
+    "mcp",
+    "claude-code",
+    "cursor",
+    "codex",
+    "agent-skills"
   ],
   "license": "Apache-2.0",
   "dependencies": {

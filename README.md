@@ -1,7 +1,14 @@
 # shijing-agent
 
-**Did your redesign actually make the task easier?**
-Describe a task in plain English. An agent does it on both versions of your page, and you get a report on clicks, the path taken, and whether the output is identical.
+**Your AI agent changed the UI. Did it get easier?**
+
+Coding agents change interfaces every day. Tests tell you nothing broke. Nobody checks whether the task got easier for the user, or quietly got harder.
+
+shijing-agent runs the same user task on the version before and after the change, each in a fresh browser, and reports the clicks, the path taken, and whether the output is identical. Connect it to your agent with one command, and the agent measures its own UI changes before calling them done.
+
+```bash
+npx shijing-agent setup    # Claude Code · Cursor · Codex · Claude Desktop
+```
 
 [中文说明](README.zh-CN.md)
 
@@ -23,9 +30,11 @@ candidate completes the task in 1 click instead of 5 (-4) with identical output.
 
 ## Why
 
-UI tests answer *"does it still work?"*. They don't answer *"is it easier now?"*, which is usually why you shipped the redesign.
+An agent asked to "make export easier" will move a button and report success. A UI test will confirm the page still renders. Neither tells you whether a user now finishes the task in fewer steps with the same result. That was the point of the change.
 
-shijing-agent behaves like a first-time user. It doesn't follow selectors you wrote. It reads the visible controls and picks the one that best fits the goal. So:
+UI tests answer *"does it still work?"*. shijing-agent answers *"is it easier now?"*, with numbers you can put in the pull request.
+
+It behaves like a first-time user. It doesn't follow selectors you wrote. It reads the visible controls and picks the one that best fits the goal. So:
 
 - **Clicks and the path are measured, not scripted.** If the new layout hides the action, the agent takes the longer path too.
 - **Success is checked independently.** The downloaded bytes are compared with an expected file, or the page text is checked. The agent never grades itself.

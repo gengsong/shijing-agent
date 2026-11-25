@@ -21,9 +21,9 @@ if (before.status !== 'passed' || after.status !== 'passed') throw new Error('De
 const W = 640;
 const card = (html, h, file) => ({ html, h, file: path.join(work, file) });
 const cards = [
-  card(`<div class="t"><b>BEFORE</b> · original page</div><div class="n">${before.clicks} clicks</div>`, 64, 'h1.png'),
-  card(`<div class="t"><b>AFTER</b> · redesign</div><div class="n ok">${after.clicks} click</div>`, 64, 'h2.png'),
-  card(`<div class="f">$ npx shijing-agent demo &nbsp;→&nbsp; <b>same task, ${before.clicks} clicks → ${after.clicks}, identical CSV</b></div>`, 44, 'foot.png'),
+  card(`<div class="t"><b>BEFORE</b> the agent's change</div><div class="n">${before.clicks} clicks</div>`, 64, 'h1.png'),
+  card(`<div class="t"><b>AFTER</b> the agent's change</div><div class="n ok">${after.clicks} click</div>`, 64, 'h2.png'),
+  card(`<div class="f">Your AI agent changed the UI. Did it get easier? &nbsp;→&nbsp; <b>same task, ${before.clicks} clicks → ${after.clicks}, identical CSV</b></div>`, 44, 'foot.png'),
 ];
 const browser = await chromium.launch();
 const page = await browser.newPage({ deviceScaleFactor: 1 });
