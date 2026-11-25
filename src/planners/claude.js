@@ -9,7 +9,17 @@ import Anthropic from '@anthropic-ai/sdk';
  * checks.js, never by the model.
  */
 
-export const DEFAULT_MODEL = 'claude-opus-5-5';
+export const SONNET = 'claude-sonnet-5-5';
+export const OPUS = 'claude-opus-5-5';
+export const DEFAULT_MODEL = OPUS;
+
+/**
+ * Default routing for `--planner claude`: try Sonnet first (cheaper, fast),
+ * and re-run a target with Opus only if Sonnet did not complete the task.
+ */
+export function claudeTiers(options = {}) {
+  return [SONNET, OPUS].map((model) => () => createClaudePlanner({ ...options, model }));
+}
 
 const SYSTEM = `You operate a web page on behalf of a first-time user who wants to finish one task.
 You see the visible controls of the current page and the actions taken so far.

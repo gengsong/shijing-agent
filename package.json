@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "demo": "node bin/shijing.js demo",
-    "test": "node --test tests/rules.test.js tests/checks.test.js tests/claude.test.js tests/e2e.test.js",
+    "test": "node --test tests/rules.test.js tests/checks.test.js tests/claude.test.js tests/e2e.test.js tests/mcp.test.js",
     "test:unit": "node --test tests/rules.test.js tests/checks.test.js tests/claude.test.js"
   },
   "engines": {
@@ -37,8 +37,10 @@
   "license": "Apache-2.0",
   "dependencies": {
     "@anthropic-ai/sdk": "^1.14.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "playwright": "^1.62.0",
-    "yaml": "^2.6.0"
+    "yaml": "^2.6.0",
+    "zod": "^4.6.7"
   },
   "repository": {
     "type": "git",

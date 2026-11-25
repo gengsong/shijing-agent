@@ -32,3 +32,17 @@ test('control: a wrong expected file makes both versions fail', { timeout: 120_0
     assert.match(r.reason, /differs/);
   }
 });
+
+test('escalation: a target the first planner cannot finish is re-run with the next one', { timeout: 120_000 }, async () => {
+  const quitter = () => ({ name: 'quitter', usage: null, next: async () => ({ action: 'give_up', reason: 'testing escalation' }) });
+  const { results } = await runTask({
+    task: await loadTask(path.join(examples, 'task.yaml')),
+    targets: ['candidate'],
+    plannerTiers: [quitter, createRulesPlanner],
+    outDir: await mkdtemp(path.join(tmpdir(), 'shijing-e2e-')),
+  });
+  const [r] = results;
+  assert.equal(r.status, 'passed');
+  assert.equal(r.planner, 'rules');
+  assert.deepEqual(r.attempts.map((a) => [a.planner, a.status]), [['quitter', 'failed'], ['rules', 'passed']]);
+});

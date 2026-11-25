@@ -46,7 +46,22 @@ npx shijing-agent demo --video         # 同时录下 Agent 在每个版本上�
 ## 两种规划器
 
 - `rules`（默认）：离线、免费、结果确定，适合 CI 和简单的查找、导出、导航任务。
-- `claude`：使用你自己的 API Key（`ANTHROPIC_API_KEY`），默认模型为 `claude-opus-5-5`，可以用 `--model` 切换。报告会列出调用次数和估算费用。
+- `claude`：使用你自己的 API Key（`ANTHROPIC_API_KEY`）。默认先用 Sonnet 5.5；某个版本 Sonnet 没完成，就用 Opus 5.5 从头再跑一遍。报告的 Planner 一行会写明实际用了哪些模型、调用次数和估算费用，例如 `sonnet-5-5 (failed) → opus-5-5 (passed)`。页面打不开这类错误不会升级重试。用 `--model` 可以固定只用一个模型。
+
+## 在 AI Agent 里使用（MCP）
+
+`shijing-agent mcp` 会启动一个 stdio 模式的 MCP Server，提供三个工具：
+- `compare_pages`：传入目标、新旧两个版本和检查条件，返回对比报告。
+- `run_task_file`：运行一个任务 YAML 文件。
+- `run_demo`：离线运行内置示例。
+
+在 Claude Code 里接入：
+
+```bash
+claude mcp add shijing -- npx -y shijing-agent mcp
+```
+
+Claude Desktop、Cursor 等客户端，在 `mcpServers` 配置里加上 `"command": "npx", "args": ["-y", "shijing-agent", "mcp"]` 即可。
 
 ## 安全边界
 

@@ -17,6 +17,20 @@ export function estimateCost(planner, usage) {
   return (usage.input_tokens * price[0] + usage.output_tokens * price[1]) / 1e6;
 }
 
+const short = (planner) => planner.replace(/^claude:claude-/, '');
+
+/** Planner used for a target: the escalation chain if there was one, plus calls and estimated cost. */
+export function plannerCell(r) {
+  const attempts = r.attempts ?? [{ planner: r.planner, status: r.status, usage: r.usage }];
+  const chain = attempts.length > 1
+    ? attempts.map((a) => `${short(a.planner)} (${a.status})`).join(' → ')
+    : short(r.planner);
+  const calls = attempts.reduce((n, a) => n + (a.usage?.requests ?? 0), 0);
+  const costs = attempts.map((a) => estimateCost(a.planner, a.usage));
+  const cost = costs.every((c) => c == null) ? null : costs.reduce((t, c) => t + (c ?? 0), 0);
+  return `${chain}${calls ? ` · ${calls} calls` : ''}${cost != null ? ` · ~$${cost.toFixed(4)}` : ''}`;
+}
+
 export function renderMarkdown(run) {
   const rs = run.results;
   const col = (fn) => rs.map(fn).join(' | ');
@@ -30,11 +44,8 @@ export function renderMarkdown(run) {
   lines.push(`| Path | ${col((r) => r.steps.map((s) => s.label).join(' → ') || '—')} |`);
   lines.push(`| Output | ${col((r) => (r.output ? `\`${r.output.name}\` · ${r.output.bytes} B · sha256 \`${r.output.sha256.slice(0, 12)}\`` : '—'))} |`);
   lines.push(`| Time | ${col((r) => `${r.seconds}s`)} |`);
-  if (rs.some((r) => r.usage)) {
-    lines.push(`| Planner | ${col((r) => {
-      const cost = estimateCost(r.planner, r.usage);
-      return r.usage ? `${r.planner} · ${r.usage.requests} calls${cost != null ? ` · ~$${cost.toFixed(4)}` : ''}` : r.planner;
-    })} |`);
+  if (rs.some((r) => r.usage || r.attempts)) {
+    lines.push(`| Planner | ${col(plannerCell)} |`);
   }
   lines.push('');
 

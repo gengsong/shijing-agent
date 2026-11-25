@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { observe } from './observe.js';
@@ -5,6 +6,8 @@ import { allowedItems } from './policy.js';
 import { checkDownload, checkText, sha256 } from './checks.js';
 import { describeSuccess } from './task.js';
 import { serveDirectory } from './serve.js';
+
+export const VERSION = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')).version;
 
 export async function launchBrowser({ headed = false, channel, slowMo = 0 } = {}) {
   const { chromium } = await import('playwright');
@@ -172,23 +175,39 @@ export async function runTarget({ task, targetName, browser, planner, outDir, on
 }
 
 /** Run a task on every target (or the named ones) and write result.json. */
-export async function runTask({ task, targets, plannerFactory, outDir, headed, channel, onStep, video = false, slowMo = 0 }) {
+/**
+ * Run a task on every target (or the named ones) and write result.json.
+ *
+ * `plannerTiers` is a list of planner factories, cheapest first. A target that
+ * fails with one tier is re-run from scratch (fresh browser context) with the
+ * next one. Errors such as an unreachable page are not retried.
+ */
+export async function runTask({ task, targets, plannerFactory, plannerTiers, outDir, headed, channel, onStep, onEscalate, video = false, slowMo = 0 }) {
+  const tiers = plannerTiers ?? [plannerFactory];
   await mkdir(outDir, { recursive: true });
   const browser = await launchBrowser({ headed, channel, slowMo });
   const results = [];
   try {
     for (const name of targets ?? Object.keys(task.targets)) {
       if (!task.targets[name]) throw new Error(`Unknown target "${name}". Known: ${Object.keys(task.targets).join(', ')}`);
-      const planner = plannerFactory();
-      const r = await runTarget({ task, targetName: name, browser, planner, outDir, video, onStep: (s) => onStep?.(name, s) });
-      r.planner = planner.name;
-      if (planner.usage) r.usage = { ...planner.usage };
+      const attempts = [];
+      let r;
+      for (let i = 0; i < tiers.length; i++) {
+        const planner = tiers[i]();
+        r = await runTarget({ task, targetName: name, browser, planner, outDir, video, onStep: (st) => onStep?.(name, st) });
+        r.planner = planner.name;
+        if (planner.usage) r.usage = { ...planner.usage };
+        attempts.push({ planner: r.planner, status: r.status, clicks: r.clicks, reason: r.reason, ...(r.usage ? { usage: r.usage } : {}) });
+        if (r.status !== 'failed' || i === tiers.length - 1) break;
+        onEscalate?.(name, r.planner, r.reason);
+      }
+      if (attempts.length > 1) r.attempts = attempts;
       results.push(r);
     }
   } finally {
     await browser.close();
   }
-  const run = { tool: 'shijing-agent', version: '0.1.0', task: { name: task.name, goal: task.goal }, startedAt: new Date().toISOString(), results };
+  const run = { tool: 'shijing-agent', version: VERSION, task: { name: task.name, goal: task.goal }, startedAt: new Date().toISOString(), results };
   await writeFile(path.join(outDir, 'result.json'), JSON.stringify(run, null, 2) + '\n');
   return run;
 }

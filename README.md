@@ -77,15 +77,49 @@ Full reference: [docs/task-format.md](docs/task-format.md).
 
 | | `rules` (default) | `claude` |
 |---|---|---|
-| How it decides | Scores visible labels against the goal, opens menus when nothing matches yet | Claude reads the goal, history and visible controls and picks one action |
+| How it decides | Scores visible labels against the goal, opens menus when nothing matches yet | Claude reads the goal, history and visible controls and picks one action. Sonnet goes first; a target Sonnet can't finish is re-run from scratch with Opus |
 | Cost | Free, offline, deterministic | Uses your API key ([pricing](https://platform.claude.com/docs/en/about-claude/pricing)); the report shows calls and estimated cost |
 | Good for | CI, simple find / export / navigate tasks | Fuzzy wording, search boxes, unfamiliar layouts |
 
 ```bash
 export ANTHROPIC_API_KEY=...        # bring your own key; nothing is sent anywhere else
-npx shijing-agent run task.yaml --planner claude                     # default model: claude-opus-5-5
-npx shijing-agent run task.yaml --planner claude --model claude-sonnet-5-5
+npx shijing-agent run task.yaml --planner claude                         # Sonnet 5.5, then Opus 5.5 if needed
+npx shijing-agent run task.yaml --planner claude --model claude-opus-5-5 # pin one model
 ```
+
+The report's Planner row shows what ran, e.g. `sonnet-5-5 (failed) → opus-5-5 (passed) · 9 calls · ~$0.03`. Escalation only happens when a run *fails*. An error, such as a page that won't load, is not retried.
+
+## Use it from an AI agent (MCP)
+
+`shijing-agent mcp` starts an [MCP](https://modelcontextprotocol.io) server on stdio. Your coding agent can then check its own UI changes: *"I moved Export to the toolbar. Run compare_pages and see if it got easier."*
+
+| Tool | What it does |
+|---|---|
+| `compare_pages` | Goal + baseline + candidate (URL or local HTML) + a check (`download_name`, `expected_file` and/or `success_text`). Returns the report and a JSON summary |
+| `run_task_file` | Runs a task YAML |
+| `run_demo` | Runs the built-in example, offline |
+
+Claude Code:
+
+```bash
+claude mcp add shijing -- npx -y shijing-agent mcp
+```
+
+Claude Desktop, Cursor and other clients (`mcpServers` in their config):
+
+```json
+{
+  "mcpServers": {
+    "shijing": {
+      "command": "npx",
+      "args": ["-y", "shijing-agent", "mcp"],
+      "env": { "ANTHROPIC_API_KEY": "only needed for planner: claude" }
+    }
+  }
+}
+```
+
+Reports are written to `.shijing/runs/` in the server's working directory, or to `SHIJING_OUT_DIR` if it is set.
 
 ## Safety
 
@@ -115,6 +149,7 @@ Code map: `src/observe.js` (what a user can act on), `src/planners/` (rules, cla
 
 - [x] v0.1: CLI, rules and Claude planners, download and text checks, Markdown report
 - [x] Demo GIF and npm release
+- [x] MCP server; Claude planner escalates Sonnet → Opus
 - [ ] GitHub Action that comments the comparison on pull requests
 - [ ] Eval set: 30 tasks across public demo sites, tracking success rate and cost per planner
 - [ ] Form-filling tasks with test data, multi-page flows, mobile viewport presets

@@ -39,3 +39,22 @@ test('a refusal or missing tool call becomes give_up', async () => {
   const chatty = createClaudePlanner({ client: stub({ stop_reason: 'end_turn', usage, content: [{ type: 'text', text: 'Hmm' }] }) });
   assert.equal((await chatty.next({ goal: 'x', successText: 'y', view, history: [] })).action, 'give_up');
 });
+
+test('default routing is Sonnet first, then Opus', async () => {
+  const { claudeTiers } = await import('../src/planners/claude.js');
+  const client = stub({ stop_reason: 'end_turn', usage, content: [] });
+  const names = claudeTiers({ client }).map((make) => make().name);
+  assert.deepEqual(names, ['claude:claude-sonnet-5-5', 'claude:claude-opus-5-5']);
+});
+
+test('report shows the escalation chain and the summed cost', async () => {
+  const { plannerCell } = await import('../src/report.js');
+  const cell = plannerCell({
+    planner: 'claude:claude-opus-5-5',
+    attempts: [
+      { planner: 'claude:claude-sonnet-5-5', status: 'failed', usage: { requests: 4, input_tokens: 1_000_000, output_tokens: 0 } },
+      { planner: 'claude:claude-opus-5-5', status: 'passed', usage: { requests: 2, input_tokens: 1_000_000, output_tokens: 0 } },
+    ],
+  });
+  assert.equal(cell, 'sonnet-5-5 (failed) → opus-5-5 (passed) · 6 calls · ~$6.0000');
+});

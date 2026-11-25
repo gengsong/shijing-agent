@@ -13,11 +13,13 @@ const HELP = `shijing — did your redesign make the task easier?
 Usage
   shijing demo [options]           Run the bundled example (old vs new checklist page)
   shijing run <task.yaml> [options]
+  shijing mcp                       Start the MCP server on stdio (for Claude Code, Claude Desktop, Cursor...)
 
 Options
   --target <name>     Run only this target (repeatable). Default: all, in file order.
   --planner <name>    rules (default, offline) | claude (needs ANTHROPIC_API_KEY)
-  --model <id>        Claude model for --planner claude (default: claude-opus-5-5)
+  --model <id>        Claude model for --planner claude. Default: claude-sonnet-5-5, and a target
+                      that Sonnet does not finish is re-run with claude-opus-5-5.
   --out <dir>         Where to write report.md, result.json, downloads and screenshots.
                       Default: .shijing/runs/<timestamp>
   --headed            Show the browser window.
@@ -54,6 +56,11 @@ async function main() {
     process.stdout.write(HELP);
     return 0;
   }
+  if (command === 'mcp') {
+    const { startStdioServer } = await import('../src/mcp.js');
+    await startStdioServer();
+    return null; // keep running until the client disconnects
+  }
   if (command === 'demo') {
     taskFile = fileURLToPath(new URL('../examples/export-csv/task.yaml', import.meta.url));
   } else if (command !== 'run' || !taskFile) {
@@ -68,12 +75,12 @@ async function main() {
 
   const task = await loadTask(taskFile);
 
-  let plannerFactory;
+  let plannerTiers;
   if (values.planner === 'rules') {
-    plannerFactory = createRulesPlanner;
+    plannerTiers = [createRulesPlanner];
   } else if (values.planner === 'claude') {
-    const { createClaudePlanner } = await import('../src/planners/claude.js');
-    plannerFactory = () => createClaudePlanner({ model: values.model });
+    const { createClaudePlanner, claudeTiers } = await import('../src/planners/claude.js');
+    plannerTiers = values.model ? [() => createClaudePlanner({ model: values.model })] : claudeTiers();
   } else {
     process.stderr.write(`Unknown planner "${values.planner}". Use rules or claude.\n`);
     return 2;
@@ -87,13 +94,14 @@ async function main() {
   const run = await runTask({
     task,
     targets: values.target,
-    plannerFactory,
+    plannerTiers,
     outDir,
     headed: values.headed,
     channel: values.chrome ? 'chrome' : undefined,
     video: values.video,
     slowMo,
     onStep: (target, s) => log(`  [${target}] ${s.step}. ${s.action} "${s.label}"`),
+    onEscalate: (target, planner, reason) => log(`  [${target}] ${planner} did not finish (${reason}), retrying with the next model`),
   });
 
   const md = renderMarkdown(run);
@@ -111,7 +119,7 @@ async function main() {
 }
 
 main().then(
-  (code) => process.exit(code),
+  (code) => { if (code !== null) process.exit(code); },
   (e) => {
     process.stderr.write(`${e instanceof TaskError ? '' : 'Error: '}${e.message}\n`);
     process.exit(e instanceof TaskError ? 2 : 1);
