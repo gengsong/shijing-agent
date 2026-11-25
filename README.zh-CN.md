@@ -61,7 +61,7 @@ npx shijing-agent demo --video         # 同时录下 Agent 在每个版本上�
 npx shijing-agent setup
 ```
 
-它会先列出要改哪些配置，等你确认后才动手，每个配置文件改之前都会备份。对 Claude Code 还会装一个 `shijing-ux-check` 技能：Agent 改完界面后，会先用 shijing 测一遍，再说"改好了"。装完重启 Agent，然后对它说："我改了导出流程，用 shijing 看看是不是更好用了。"
+它会先列出要改哪些配置，等你确认后才动手，每个配置文件改之前都会备份。对 Claude Code、Cursor 和 Codex 还会装一个 `shijing-ux-check` 技能：Agent 改完界面后，会先用 shijing 测一遍，再说"改好了"。装完重启 Agent，然后对它说："我改了导出流程，用 shijing 看看是不是更好用了。"
 
 - `--dry-run`：只看计划，不做修改。
 - `--client cursor`：只配置一个客户端，可选 claude-code、claude-desktop、cursor、codex。

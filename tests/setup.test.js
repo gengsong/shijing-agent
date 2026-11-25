@@ -85,8 +85,10 @@ test('never overwrites a config file it cannot parse', async () => {
   const plan = await planSetup({ env, only: ['cursor'] });
   assert.equal(plan.steps[0].status, 'skip');
   assert.match(plan.steps[0].detail, /not valid JSON/);
+  assert.equal(plan.steps[1].kind, 'skill'); // the skill still installs
   await applyPlan(plan);
   assert.equal(await readFile(cursor, 'utf8'), '{ "mcpServers": { broken');
+  assert.ok(existsSync(path.join(home, '.cursor/skills/shijing-ux-check/SKILL.md')));
 });
 
 test('Claude Code without the CLI on PATH: skill only, with the manual command', async () => {
@@ -105,6 +107,7 @@ test('Codex: appends a TOML table and removes only that table', async () => {
   await writeFile(file, 'model = "x"\n\n[mcp_servers.other]\ncommand = "y"\n');
 
   await applyPlan(await planSetup({ env, only: ['codex'] }));
+  assert.ok(existsSync(path.join(home, '.codex/skills/shijing-ux-check/SKILL.md')));
   const added = await readFile(file, 'utf8');
   assert.match(added, /\[mcp_servers\.shijing\]\ncommand = "npx"\nargs = \["-y", "shijing-agent", "mcp"\]/);
   assert.match(added, /\[mcp_servers\.other\]/);
@@ -112,10 +115,31 @@ test('Codex: appends a TOML table and removes only that table', async () => {
   await applyPlan(await planSetup({ env, only: ['codex'], remove: true }));
   const removed = await readFile(file, 'utf8');
   assert.ok(!removed.includes('shijing'));
+  assert.ok(!existsSync(path.join(home, '.codex/skills/shijing-ux-check')));
   assert.match(removed, /model = "x"[\s\S]*\[mcp_servers\.other\]\ncommand = "y"/);
 });
 
 test('removeTomlTable stops at the next table', () => {
   const text = '[a]\nx = 1\n[mcp_servers.shijing]\ncommand = "npx"\n[b]\ny = 2\n';
   assert.equal(removeTomlTable(text, '[mcp_servers.shijing]'), '[a]\nx = 1\n[b]\ny = 2\n');
+});
+
+test('Cursor: MCP config plus the skill in ~/.cursor/skills', async () => {
+  const { home, env } = await fakeEnv({ claude: false });
+  await mkdir(path.join(home, '.cursor'), { recursive: true });
+  const plan = await planSetup({ env });
+  assert.deepEqual(plan.steps.map((s) => [s.client, s.kind, s.status]), [['Cursor', 'mcp', 'add'], ['Cursor', 'skill', 'add']]);
+  await applyPlan(plan);
+  const config = JSON.parse(await readFile(path.join(home, '.cursor/mcp.json'), 'utf8'));
+  assert.deepEqual(config.mcpServers.shijing.args, ['-y', 'shijing-agent', 'mcp']);
+  const skill = await readFile(path.join(home, '.cursor/skills/shijing-ux-check/SKILL.md'), 'utf8');
+  assert.match(skill, /^---\nname: shijing-ux-check\ndescription: /);
+});
+
+test('Codex honours CODEX_HOME', async () => {
+  const { home, env } = await fakeEnv({ claude: false });
+  const codexHome = path.join(home, 'custom-codex');
+  await mkdir(codexHome, { recursive: true });
+  const plan = await planSetup({ env: { ...env, codexHome }, only: ['codex'] });
+  assert.deepEqual(plan.steps.map((s) => s.detail), [path.join(codexHome, 'config.toml'), path.join(codexHome, 'skills/shijing-ux-check/SKILL.md')]);
 });

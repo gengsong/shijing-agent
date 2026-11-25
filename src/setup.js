@@ -7,8 +7,8 @@ import path from 'node:path';
 /**
  * `shijing setup`: connect shijing-agent to the coding agents on this machine.
  *
- * For each client it finds, it plans one or two changes (register the MCP
- * server, install the UX-check skill), shows the plan, and applies it only
+ * For each client it finds, it plans its changes (register the MCP server;
+ * install the UX-check skill for Claude Code, Cursor and Codex), shows the plan, and applies it only
  * after approval. Every config file it edits is backed up first; a file it
  * cannot parse is left alone. `--remove` undoes the same changes.
  */
@@ -24,6 +24,7 @@ export function defaultEnv() {
     home: os.homedir(),
     platform: process.platform,
     appData: process.env.APPDATA,
+    codexHome: process.env.CODEX_HOME,
     which: (cmd) => spawnSync(process.platform === 'win32' ? 'where' : 'which', [cmd], { encoding: 'utf8' }).status === 0,
     run: (cmd, args) => {
       const r = spawnSync(cmd, args, { encoding: 'utf8', shell: process.platform === 'win32' });
@@ -38,8 +39,23 @@ function claudeDesktopConfig(env) {
   return path.join(env.home, '.config', 'Claude', 'claude_desktop_config.json');
 }
 
+/** Install or remove the UX-check skill in one client's user skills folder. */
+function skillStep(client, skillsRoot, remove) {
+  const dir = path.join(skillsRoot, SKILL_NAME);
+  const file = path.join(dir, 'SKILL.md');
+  const has = existsSync(file);
+  return remove
+    ? { client, kind: 'skill', status: has ? 'remove' : 'absent', detail: dir,
+      apply: async () => rm(dir, { recursive: true, force: true }) }
+    : { client, kind: 'skill', status: has ? 'update' : 'add', detail: file,
+      apply: async () => {
+        await mkdir(dir, { recursive: true });
+        await writeFile(file, await readFile(SKILL_SOURCE, 'utf8'));
+      } };
+}
+
 /** JSON configs with an `mcpServers` map (Claude Desktop, Cursor). */
-function jsonClient(name, file, presentIf) {
+function jsonClient(name, file, presentIf, skillsRoot) {
   return {
     name,
     detect: () => file && (existsSync(file) || existsSync(path.dirname(file)) || presentIf?.()),
@@ -49,28 +65,29 @@ function jsonClient(name, file, presentIf) {
         try {
           config = JSON.parse((await readFile(file, 'utf8')) || '{}');
         } catch {
-          return [{ client: name, kind: 'mcp', status: 'skip', detail: `${file} is not valid JSON; edit it by hand` }];
+          const skip = { client: name, kind: 'mcp', status: 'skip', detail: `${file} is not valid JSON; edit it by hand` };
+          return skillsRoot ? [skip, skillStep(name, skillsRoot, remove)] : [skip];
         }
       }
       const has = Boolean(config.mcpServers?.[SERVER_NAME]);
-      if (remove) {
-        return [{ client: name, kind: 'mcp', status: has ? 'remove' : 'absent', detail: file,
+      const steps = [remove
+        ? { client: name, kind: 'mcp', status: has ? 'remove' : 'absent', detail: file,
           apply: async () => {
             delete config.mcpServers[SERVER_NAME];
             await backupAndWrite(file, JSON.stringify(config, null, 2) + '\n');
+          } }
+        : { client: name, kind: 'mcp', status: has ? 'present' : 'add', detail: file,
+          apply: async () => {
+            config.mcpServers = { ...config.mcpServers, [SERVER_NAME]: { ...SERVER } };
+            await backupAndWrite(file, JSON.stringify(config, null, 2) + '\n');
           } }];
-      }
-      return [{ client: name, kind: 'mcp', status: has ? 'present' : 'add', detail: file,
-        apply: async () => {
-          config.mcpServers = { ...config.mcpServers, [SERVER_NAME]: { ...SERVER } };
-          await backupAndWrite(file, JSON.stringify(config, null, 2) + '\n');
-        } }];
+      if (skillsRoot) steps.push(skillStep(name, skillsRoot, remove));
+      return steps;
     },
   };
 }
 
 function claudeCode(env) {
-  const skillDir = path.join(env.home, '.claude', 'skills', SKILL_NAME);
   const addArgs = ['mcp', 'add', '-s', 'user', SERVER_NAME, '--', SERVER.command, ...SERVER.args];
   return {
     name: 'Claude Code',
@@ -87,23 +104,15 @@ function claudeCode(env) {
           : { client: 'Claude Code', kind: 'mcp', status: has ? 'present' : 'add', detail: `claude ${addArgs.join(' ')}`,
             apply: async () => check(env.run('claude', addArgs)) });
       }
-      const skillFile = path.join(skillDir, 'SKILL.md');
-      const hasSkill = existsSync(skillFile);
-      steps.push(remove
-        ? { client: 'Claude Code', kind: 'skill', status: hasSkill ? 'remove' : 'absent', detail: skillDir,
-          apply: async () => rm(skillDir, { recursive: true, force: true }) }
-        : { client: 'Claude Code', kind: 'skill', status: hasSkill ? 'update' : 'add', detail: skillFile,
-          apply: async () => {
-            await mkdir(skillDir, { recursive: true });
-            await writeFile(skillFile, await readFile(SKILL_SOURCE, 'utf8'));
-          } });
+      steps.push(skillStep('Claude Code', path.join(env.home, '.claude', 'skills'), remove));
       return steps;
     },
   };
 }
 
 function codex(env) {
-  const file = path.join(env.home, '.codex', 'config.toml');
+  const codexHome = env.codexHome || path.join(env.home, '.codex');
+  const file = path.join(codexHome, 'config.toml');
   const block = `\n${CODEX_HEADER}\ncommand = "${SERVER.command}"\nargs = [${SERVER.args.map((a) => `"${a}"`).join(', ')}]\n`;
   return {
     name: 'Codex',
@@ -111,12 +120,13 @@ function codex(env) {
     async plan(remove) {
       const text = existsSync(file) ? await readFile(file, 'utf8') : '';
       const has = text.includes(CODEX_HEADER);
-      if (remove) {
-        return [{ client: 'Codex', kind: 'mcp', status: has ? 'remove' : 'absent', detail: file,
-          apply: async () => backupAndWrite(file, removeTomlTable(text, CODEX_HEADER)) }];
-      }
-      return [{ client: 'Codex', kind: 'mcp', status: has ? 'present' : 'add', detail: file,
-        apply: async () => backupAndWrite(file, text.replace(/\n*$/, '\n') + block) }];
+      const mcp = remove
+        ? { client: 'Codex', kind: 'mcp', status: has ? 'remove' : 'absent', detail: file,
+          apply: async () => backupAndWrite(file, removeTomlTable(text, CODEX_HEADER)) }
+        : { client: 'Codex', kind: 'mcp', status: has ? 'present' : 'add', detail: file,
+          apply: async () => backupAndWrite(file, text.replace(/\n*$/, '\n') + block) };
+      // $CODEX_HOME/skills is read by every Codex version that supports skills.
+      return [mcp, skillStep('Codex', path.join(codexHome, 'skills'), remove)];
     },
   };
 }
@@ -151,7 +161,7 @@ export function clients(env) {
   return [
     claudeCode(env),
     jsonClient('Claude Desktop', claudeDesktopConfig(env)),
-    jsonClient('Cursor', path.join(env.home, '.cursor', 'mcp.json'), () => env.which('cursor')),
+    jsonClient('Cursor', path.join(env.home, '.cursor', 'mcp.json'), () => env.which('cursor'), path.join(env.home, '.cursor', 'skills')),
     codex(env),
   ];
 }
